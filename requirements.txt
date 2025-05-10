@@ -2,3 +2,4 @@ fastapi
 uvicorn
 yandex-music
 python-dotenv
+gunicorn
