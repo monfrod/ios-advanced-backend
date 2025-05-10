@@ -1,0 +1,4 @@
+fastapi
+uvicorn
+yandex-music
+python-dotenv
