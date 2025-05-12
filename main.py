@@ -85,15 +85,16 @@ def get_user_mixes_final():
     client = get_client()
     mixes_output = []
     try:
-        # print("Запрос блоков с главной страницы (landing)...")
         landing = client.landing(blocks=['personal-playlists'])
 
         if not landing or not landing.blocks:
-            print("Не найдены блоки на главной странице или объект landing пуст.")
+            print("Блок 'personal-playlists' не найден на главной странице.")
             return []
 
+        processed_playlists_count = 0
         for block_idx, block in enumerate(landing.blocks):
             if block.type == 'personal-playlists':
+                processed_playlists_count += 1
                 if not block.entities:
                     continue
 
@@ -101,105 +102,89 @@ def get_user_mixes_final():
                     if len(mixes_output) >= 4:
                         break
 
-                    wrapper_data = entity.data  # Это GeneratedPlaylist
-
+                    wrapper_data = entity.data
                     if not hasattr(wrapper_data, 'data') or not wrapper_data.data:
-                        print(
-                            f"    Пропуск сущности {entity_idx + 1}: отсутствует вложенный атрибут 'data' у {type(wrapper_data).__name__}.")
                         continue
 
-                    playlist_data_source = wrapper_data.data  # Это может быть dict или объект Playlist
+                    playlist_data_source = wrapper_data.data
 
                     title = 'Название неизвестно'
-                    playlist_uid_internal = None
-                    playlist_kind = None
                     owner_uid = None
+                    playlist_kind = None
                     cover_url = None
                     track_count_from_source = 0
 
-                    # print(f"    DEBUG: Тип playlist_data_source ({getattr(wrapper_data,'type','N/A')}): {type(playlist_data_source).__name__}")
-
                     if isinstance(playlist_data_source, dict):
-                        # print("      DEBUG: playlist_data_source - это СЛОВАРЬ.")
                         title = playlist_data_source.get('title', 'Название неизвестно')
-                        playlist_uid_internal = playlist_data_source.get('uid')
                         playlist_kind = playlist_data_source.get('kind')
                         owner_info = playlist_data_source.get('owner', {})
-                        owner_uid = owner_info.get('uid') if isinstance(owner_info,
-                                                                        dict) else None  # Доп. проверка для owner_info
+                        owner_uid = owner_info.get('uid') if isinstance(owner_info, dict) else None
                         cover_info = playlist_data_source.get('cover', {})
                         cover_uri_template = cover_info.get('uri') if isinstance(cover_info, dict) else None
-                        track_count_from_source = playlist_data_source.get('track_count', 0)
                         if cover_uri_template:
                             cover_url = f"https://{cover_uri_template.replace('%%', '200x200')}"
-                    elif isinstance(playlist_data_source,
-                                    Playlist):  # Проверяем, не является ли это уже объектом Playlist
-                        # print("      DEBUG: playlist_data_source - это ОБЪЕКТ Playlist.")
+                        track_count_from_source = playlist_data_source.get('track_count', 0)
+                    elif isinstance(playlist_data_source, Playlist):
                         title = getattr(playlist_data_source, 'title', 'Название неизвестно')
-                        playlist_uid_internal = getattr(playlist_data_source, 'uid', None)
                         playlist_kind = getattr(playlist_data_source, 'kind', None)
                         if hasattr(playlist_data_source, 'owner') and playlist_data_source.owner:
                             owner_uid = getattr(playlist_data_source.owner, 'uid', None)
-
                         if hasattr(playlist_data_source, 'cover') and playlist_data_source.cover:
                             cover_uri_template = getattr(playlist_data_source.cover, 'uri', None)
                             if cover_uri_template:
                                 cover_url = f"https://{cover_uri_template.replace('%%', '200x200')}"
                         track_count_from_source = getattr(playlist_data_source, 'track_count', 0)
                     else:
-                        print(
-                            f"    Пропуск сущности: playlist_data_source имеет неожиданный тип {type(playlist_data_source).__name__} для wrapper_data.type = {getattr(wrapper_data, 'type', 'N/A')}")
                         continue
 
-                    track_ids = []
-                    # Если у нас уже есть объект Playlist из playlist_data_source, можно было бы использовать его напрямую.
-                    # Но для единообразия пока оставим логику с client.users_playlists, если есть owner_uid и kind.
-                    # Если playlist_data_source был Playlist, то owner_uid и kind мы из него извлекли.
+                    detailed_tracks_list: List[Dict[str, Any]] = []
+
                     if owner_uid is not None and playlist_kind is not None:
                         try:
-                            # print(f"      Запрос полного плейлиста для OwnerUID: {owner_uid}, Kind: {playlist_kind}")
                             full_playlist_obj = client.users_playlists(user_id=owner_uid, kind=playlist_kind)
+                            if full_playlist_obj:
+                                track_objects_from_playlist = []
+                                if hasattr(full_playlist_obj, 'fetch_tracks') and callable(
+                                        getattr(full_playlist_obj, 'fetch_tracks')):
+                                    fetched_tracks = full_playlist_obj.fetch_tracks()
+                                    if fetched_tracks:
+                                        track_objects_from_playlist.extend(fetched_tracks)
+                                elif hasattr(full_playlist_obj, 'tracks') and full_playlist_obj.tracks:
+                                    track_ids_to_fetch = [
+                                        str(t_short.id) for t_short in full_playlist_obj.tracks
+                                        if t_short and hasattr(t_short, 'id') and t_short.id is not None
+                                    ]
+                                    if track_ids_to_fetch:
+                                        full_track_objects = client.tracks(track_ids_to_fetch)
+                                        track_objects_from_playlist.extend(full_track_objects)
 
-                            if full_playlist_obj:  # full_playlist_obj должен быть объектом Playlist
-                                if hasattr(full_playlist_obj, 'tracks') and full_playlist_obj.tracks:
-                                    for t_short in full_playlist_obj.tracks:
-                                        for t_short in full_playlist_obj.tracks:
-                                            if t_short and hasattr(t_short, 'id'):
-                                                track = client.tracks([t_short.id])[0]
-                                                track_ids.append(track.to_dict())
-
-                                if not track_ids and hasattr(full_playlist_obj, 'fetch_tracks'):
-                                    fetched_tracks_list = full_playlist_obj.fetch_tracks()
-                                    if fetched_tracks_list:
-                                        for t_full in fetched_tracks_list:
-                                            track = client.tracks([t_full])[0]
-                                            track_ids.append(track.to_dict())
-                            # else:
-                            # print(f"      client.users_playlists не вернул объект для OwnerUID: {owner_uid}, Kind: {playlist_kind}")
+                                for track_obj in track_objects_from_playlist:
+                                    if track_obj:
+                                        detailed_tracks_list.append(track_obj.to_dict())
                         except Exception as e_fetch:
                             print(
                                 f"    Ошибка при получении треков для плейлиста '{title}' (OwnerUID: {owner_uid}, Kind: {playlist_kind}): {e_fetch}")
-                    # else:
-                    # print(f"    Недостаточно данных (OwnerUID или Kind) для запроса треков плейлиста '{title}'.")
 
                     mixes_output.append({
                         'title': title,
                         'cover_image_url': cover_url,
-                        'tracks': track_ids,
+                        'tracks': detailed_tracks_list,
                         'track_count_from_data': track_count_from_source,
-                        'fetched_track_count': len(track_ids),
+                        'fetched_track_count': len(detailed_tracks_list),
                     })
             if len(mixes_output) >= 4:
                 break
+
+        if processed_playlists_count == 0:
+            print("Не найдено блоков 'personal-playlists' или они пусты.")
 
         return mixes_output
 
     except Exception as e:
         print(f"КРИТИЧЕСКАЯ ОШИБКА в get_user_mixes_final: {e}")
-        # Для отладки можно добавить вывод трассировки:
-        # import traceback
-        # traceback.print_exc()
-        return []
+        # traceback.print_exc() # Убрано
+        raise HTTPException(status_code=500, detail=f"Внутренняя ошибка сервера: {str(e)}")
+
 
 @app.get("/chart")
 def get_charts_data_structured() -> Dict[str, Any]:
