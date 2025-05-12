@@ -164,7 +164,7 @@ def get_user_mixes_final():
                                 if hasattr(full_playlist_obj, 'tracks') and full_playlist_obj.tracks:
                                     for t_short in full_playlist_obj.tracks:
                                         if t_short and hasattr(t_short, 'id'):
-                                            track_ids.append(str(t_short.id))
+                                            track_ids.append(get_track(t_short.id))
 
                                 if not track_ids and hasattr(full_playlist_obj, 'fetch_tracks'):
                                     fetched_tracks_list = full_playlist_obj.fetch_tracks()
