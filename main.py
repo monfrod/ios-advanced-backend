@@ -170,8 +170,8 @@ def get_user_mixes_final():
                                     fetched_tracks_list = full_playlist_obj.fetch_tracks()
                                     if fetched_tracks_list:
                                         for t_full in fetched_tracks_list:
-                                            if t_full and hasattr(t_full, 'track'):
-                                                track_ids.append(str(t_full))
+                                            if t_full and hasattr(t_full, 'id'):
+                                                track_ids.append(str(t_full.id))
                             # else:
                             # print(f"      client.users_playlists не вернул объект для OwnerUID: {owner_uid}, Kind: {playlist_kind}")
                         except Exception as e_fetch:
