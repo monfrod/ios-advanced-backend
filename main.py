@@ -137,7 +137,7 @@ def get_user_mixes_final():
                     else:
                         continue
 
-                    simplified_tracks_list: List[Dict[str, Any]] = []
+                    detailed_tracks_list: List[Dict[str, Any]] = []
 
                     if owner_uid is not None and playlist_kind is not None:
                         try:
@@ -155,34 +155,12 @@ def get_user_mixes_final():
                                         if t_short and hasattr(t_short, 'id') and t_short.id is not None
                                     ]
                                     if track_ids_to_fetch:
-                                        full_track_objects_from_api = client.tracks(track_ids_to_fetch)
-                                        track_objects_from_playlist.extend(full_track_objects_from_api)
+                                        full_track_objects = client.tracks(track_ids_to_fetch)
+                                        track_objects_from_playlist.extend(full_track_objects)
 
                                 for track_obj in track_objects_from_playlist:
-                                    if track_obj and hasattr(track_obj, 'id') and track_obj.id is not None:
-                                        artist_names = []
-                                        if hasattr(track_obj, 'artists') and track_obj.artists:
-                                            for art in track_obj.artists:
-                                                if hasattr(art, 'name') and art.name:
-                                                    artist_names.append(art.name)
-
-                                        track_cover_url_val = None
-                                        if hasattr(track_obj, 'albums') and track_obj.albums and len(
-                                                track_obj.albums) > 0:
-                                            album_for_cover = track_obj.albums[0]
-                                            if hasattr(album_for_cover, 'cover_uri') and album_for_cover.cover_uri:
-                                                track_cover_url_val = f"https://{album_for_cover.cover_uri.replace('%%', '200x200')}"
-                                        elif hasattr(track_obj,
-                                                     'cover_uri') and track_obj.cover_uri:  # Резервный вариант, если у трека есть cover_uri
-                                            track_cover_url_val = f"https://{track_obj.cover_uri.replace('%%', '200x200')}"
-
-                                        simplified_tracks_list.append({
-                                            "id": str(track_obj.id),
-                                            "title": getattr(track_obj, 'title', 'N/A'),
-                                            "artists": ", ".join(artist_names) if artist_names else "N/A",
-                                            "cover_url": track_cover_url_val,
-                                            "duration_ms": getattr(track_obj, 'duration_ms', None)
-                                        })
+                                    if track_obj:
+                                        detailed_tracks_list.append(track_obj.to_dict())
                         except Exception as e_fetch:
                             print(
                                 f"    Ошибка при получении треков для плейлиста '{title}' (OwnerUID: {owner_uid}, Kind: {playlist_kind}): {e_fetch}")
@@ -190,9 +168,9 @@ def get_user_mixes_final():
                     mixes_output.append({
                         'title': title,
                         'cover_image_url': cover_url,
-                        'tracks': simplified_tracks_list,
+                        'tracks': detailed_tracks_list,
                         'track_count_from_data': track_count_from_source,
-                        'fetched_track_count': len(simplified_tracks_list),
+                        'fetched_track_count': len(detailed_tracks_list),
                     })
             if len(mixes_output) >= 4:
                 break
