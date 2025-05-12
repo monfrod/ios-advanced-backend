@@ -204,8 +204,8 @@ def get_user_mixes_final():
 
     except Exception as e:
         print(f"КРИТИЧЕСКАЯ ОШИБКА в get_user_mixes_final: {e}")
-        # traceback.print_exc() # Убрано
-        raise HTTPException(status_code=500, detail=f"Внутренняя ошибка сервера: {str(e)}")
+
+    raise HTTPException(status_code=500, detail=f"Внутренняя ошибка сервера: {str(e)}")
 
 
 @app.get("/chart")
