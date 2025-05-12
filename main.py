@@ -165,7 +165,7 @@ def get_user_mixes_final():
                                         if hasattr(track_obj, 'artists') and track_obj.artists:
                                             for art in track_obj.artists:
                                                 if hasattr(art, 'name') and art.name:
-                                                    artist_names.append(art.name.)
+                                                    artist_names.append(art.name)
 
                                         track_cover_url_val = None
                                         # Пытаемся получить обложку с первого альбома
