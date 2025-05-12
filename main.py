@@ -137,7 +137,7 @@ def get_user_mixes_final():
                     else:
                         continue
 
-                    simplified_tracks_list: List[Dict[str, Any]] = []  # Список для словарей с УПРОЩЕННОЙ инфо о треках
+                    simplified_tracks_list: List[Dict[str, Any]] = []  # Список для словарей с упрощенной инфо о треках
 
                     if owner_uid is not None and playlist_kind is not None:
                         try:
@@ -155,12 +155,12 @@ def get_user_mixes_final():
                                         if t_short and hasattr(t_short, 'id') and t_short.id is not None
                                     ]
                                     if track_ids_to_fetch:
-                                        full_track_objects_from_api = client.tracks(track_ids_to_fetch)
-                                        track_objects_from_playlist.extend(full_track_objects_from_api)
+                                        full_track_objects = client.tracks(track_ids_to_fetch)
+                                        track_objects_from_playlist.extend(full_track_objects)
 
                                 for track_obj in track_objects_from_playlist:
                                     if track_obj and hasattr(track_obj, 'id') and track_obj.id is not None:
-                                        # --- НАЧАЛО: Формирование УПРОЩЕННОГО словаря для трека ---
+                                        # Формируем словарь с нужными полями
                                         artist_names = []
                                         if hasattr(track_obj, 'artists') and track_obj.artists:
                                             for art in track_obj.artists:
@@ -168,25 +168,21 @@ def get_user_mixes_final():
                                                     artist_names.append(art.name)
 
                                         track_cover_url_val = None
-                                        # Пытаемся получить обложку с первого альбома
                                         if hasattr(track_obj, 'albums') and track_obj.albums and len(
                                                 track_obj.albums) > 0:
                                             album_for_cover = track_obj.albums[0]
                                             if hasattr(album_for_cover, 'cover_uri') and album_for_cover.cover_uri:
                                                 track_cover_url_val = f"https://{album_for_cover.cover_uri.replace('%%', '200x200')}"
-                                        # Если с альбома не получилось, пробуем с самого трека (менее вероятно, но для полноты)
                                         elif hasattr(track_obj, 'cover_uri') and track_obj.cover_uri:
                                             track_cover_url_val = f"https://{track_obj.cover_uri.replace('%%', '200x200')}"
 
                                         simplified_tracks_list.append({
                                             "id": str(track_obj.id),
                                             "title": getattr(track_obj, 'title', 'N/A'),
-                                            "artists": ", ".join(artist_names) if artist_names else "N/A",
-                                            # Объединяем имена артистов в строку
+                                            "artists": artist_names,  # Список имен исполнителей
                                             "cover_url": track_cover_url_val,
                                             "duration_ms": getattr(track_obj, 'duration_ms', None)
                                         })
-                                        # --- КОНЕЦ: Формирование УПРОЩЕННОГО словаря для трека ---
                         except Exception as e_fetch:
                             print(
                                 f"    Ошибка при получении треков для плейлиста '{title}' (OwnerUID: {owner_uid}, Kind: {playlist_kind}): {e_fetch}")
@@ -194,7 +190,7 @@ def get_user_mixes_final():
                     mixes_output.append({
                         'title': title,
                         'cover_image_url': cover_url,
-                        'tracks': simplified_tracks_list,
+                        'tracks': simplified_tracks_list,  # Используем новый список с упрощенной информацией
                         'track_count_from_data': track_count_from_source,
                         'fetched_track_count': len(simplified_tracks_list),
                     })
@@ -210,6 +206,7 @@ def get_user_mixes_final():
         print(f"КРИТИЧЕСКАЯ ОШИБКА в get_user_mixes_final: {e}")
         # traceback.print_exc() # Убрано
         raise HTTPException(status_code=500, detail=f"Внутренняя ошибка сервера: {str(e)}")
+
 
 @app.get("/chart")
 def get_charts_data_structured() -> Dict[str, Any]:
