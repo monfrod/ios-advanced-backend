@@ -160,8 +160,11 @@ def get_user_mixes_final():
 
                                 for track_obj in track_objects_from_playlist:
                                     if track_obj:
-                                        print(dir(track_obj.track.og_image))
+                                        print(dir(track_obj.getOgImageUrl))
                                         detailed_tracks_list.append(track_obj.to_dict())
+                                        track_dict = track_obj.to_dict()
+                                        track_dict["image_url"] = track_obj.track.get_og_image_url()
+                                        detailed_tracks_list.append(track_dict)
                         except Exception as e_fetch:
                             print(
                                 f"    Ошибка при получении треков для плейлиста '{title}' (OwnerUID: {owner_uid}, Kind: {playlist_kind}): {e_fetch}")
@@ -172,6 +175,7 @@ def get_user_mixes_final():
                         'tracks': detailed_tracks_list,
                         'track_count_from_data': track_count_from_source,
                         'fetched_track_count': len(detailed_tracks_list),
+
                     })
             if len(mixes_output) >= 4:
                 break
