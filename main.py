@@ -160,7 +160,7 @@ def get_user_mixes_final():
 
                                 for track_obj in track_objects_from_playlist:
                                     if track_obj:
-                                        print(dir(track_obj))
+                                        print(dir(track_obj.track.og_image))
                                         detailed_tracks_list.append(track_obj.to_dict())
                         except Exception as e_fetch:
                             print(
